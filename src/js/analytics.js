@@ -176,6 +176,8 @@ export function measureReport({state, duration, report, error}) {
 }
 
 export function initAnalytics() {
+  return;
+
   if (location.hostname !== 'web-vitals-report.web.app') {
     window.gtag = console.log;
   }

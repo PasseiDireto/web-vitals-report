@@ -16,7 +16,7 @@
 
 /* global Highcharts */
 
-import {e} from './utils.js';
+import {e, round} from './utils.js';
 
 
 const COLORS = ['#aaa', 'hsla(218, 88%, 50%, 0.7)'];
@@ -54,7 +54,7 @@ function drawHistogram({
   const allBuckets = [];
   for (let bucket = 0; bucket < maxValue; bucket += bucketSize) {
     // Avoid floating point rounding errors.
-    bucket = Math.round(bucket * 100) / 100;
+    bucket = round(bucket, 2);
     allBuckets.push(bucket);
   }
 
@@ -183,6 +183,114 @@ function drawTable(id, dimensionName, dimensionData) {
   `;
 }
 
+function drawDebugInfo(id, pages) {
+  const pageEntries = [...Object.entries(pages)].slice(0, 5);
+
+  console.log(pageEntries)
+
+  document.getElementById(id).innerHTML = `
+    <header>
+      <h3>
+        <h3 class="Report-breakdownHeading">Debug Info</h3>
+        <div class="Report-breakdownMeta">By top pages</div>
+      </h3>
+    </header>
+
+    ${pageEntries.length > 1 ? `<nav class="DebugNav">
+      <ul>
+        ${pageEntries.map(([path]) => `
+          <li><a href="#${path}">${path}</a></li>
+        `).join('')}
+      </ul>
+    </nav>` : ''}
+
+    ${pageEntries.map(([path, page]) => `
+      <div class="Table">
+      <table>
+        <tr>
+          <th class="debug-header">
+            <div class="bar"><strong>URL Path</strong></div>
+          </th>
+          <th class="debug-header" colspan="4" id="${path}">${path}</th>
+        </tr>
+        ${['LCP', 'FID', 'CLS'].map((metric) => `
+          ${Object.keys(page[metric]).map((segment) => {
+            let debugEntries = page[metric][segment].debug;
+            if (debugEntries) {
+              debugEntries = [...Object.entries(debugEntries)]
+                  .sort((a, b) => b[1].length - a[1].length);
+
+              const importantEntries = [];
+              let otherValues = [];
+              let count = page[metric][segment].length;
+
+              for (let i = 0; i < debugEntries.length; i++) {
+                const [id, values] = debugEntries[i];
+                if (i < 5 && values.length / count >= 0.02) {
+                  importantEntries.push([id, values]);
+                } else {
+                  otherValues = otherValues.concat(values);
+                }
+              }
+              otherValues = otherValues.sort((a, b) => a - b);
+
+              const totalRows = importantEntries.length + Math.min(1, otherValues.length);
+
+              return `
+                <tr>
+                  <th class="metric-header">
+                    <div class="bar">${metric}</div>
+                  </th>
+                  <th class="Table-debug">Top debug identifiers</th>
+                  <th class="Table-value">% of page visits</th>
+                  <th class="Table-value">Count</th>
+                  <th class="Table-metric">${metric}</th>
+                </tr>
+
+                ${importantEntries.map(([id, values], index) => `
+                  <tr>
+                    ${index === 0 ? `<td class="foo" rowspan="${totalRows}">
+                      <div class="bar">${segment}</div>
+                    </td>` : ``}
+                    <td>${id}</td>
+                    <td class="Table-value">
+                      ${round(100 * values.length / count, 2)}%
+                    </td>
+                    <td class="Table-value">${values.length}</td>
+                    <td>
+                      <div class="Score Score--${score(metric, p75(values))}">
+                        ${p75(values)}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+                ${otherValues.length ? `
+                  <tr>
+                    <td><em>(other)</em></td>
+                    <td class="Table-value">
+                      ${round(100 * otherValues.length / count, 2)}%
+                    </td>
+                    <td class="Table-value">${otherValues.length}</td>
+                    <td>
+                      <div class="Score Score--${
+                        score(metric, p75(otherValues))}">
+                        ${p75(otherValues)}
+                      </div>
+                    </td>
+                  </tr>
+                `: ''}
+              `;
+            } else {
+              return '';
+            }
+          }).join('')}
+      `).join('')}
+      </table>
+      </div>
+    `).join('')}
+  `;
+}
+
 function score(metric, p75) {
   const thresholds = {
     LCP: [2500, 4000],
@@ -276,6 +384,8 @@ export function renderCharts(data) {
 
   drawTable('countries', 'Country', [...Object.entries(data.countries)]);
   drawTable('pages', 'Page', [...Object.entries(data.pages)]);
+
+  drawDebugInfo('debug', data.pages);
 
   document.getElementById('report').hidden = false;
 }
