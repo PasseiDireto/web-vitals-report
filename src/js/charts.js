@@ -209,7 +209,7 @@ function drawDebugInfo(id, pages) {
       <table>
         <tr>
           <th class="debug-header">
-            <div class="bar"><strong>URL Path</strong></div>
+            <div class="bar"><strong>URL Path</strong>
           </th>
           <th class="debug-header" colspan="4" id="${path}">${path}</th>
         </tr>

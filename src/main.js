@@ -55,6 +55,7 @@ function validateOpts(opts = {}) {
     fidName: 'FID',
     clsName: 'CLS',
     filters: '',
+    debugDim: '',
     ...opts,
   };
 }
@@ -304,7 +305,12 @@ const app = (state, data) => {
               </div>
             </div>
             <div class="Form-field">
-              <label>Additional filters</label>
+              <label>Debug dimension <em>(optional)</em></label>
+              <input id="opts:debugDim" type="text"
+                    .value=${opts.debugDim}>
+            </div>
+            <div class="Form-field">
+              <label>Additional filters <em>(optional)</em></label>
               <input id="opts:filters" type="text"
                      .value=${opts.filters}>
             </div>

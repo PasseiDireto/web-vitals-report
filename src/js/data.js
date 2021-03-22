@@ -198,9 +198,11 @@ function buildReportRequest(state) {
     {name: 'ga:country'},
     {name: 'ga:pagePath'},
     {name: opts.metricIdDim}, // Unique metric ID (ga:eventLabel)
-    // {name: 'ga:dimension6'},
-    {name: 'ga:dimension4'},
   ];
+
+  if (opts.debugDim) {
+    dimensions.push({name: opts.debugDim});
+  }
 
   let filters = [
     {
