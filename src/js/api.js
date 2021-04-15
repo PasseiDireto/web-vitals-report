@@ -14,22 +14,26 @@
  * limitations under the License.
  */
 
-import {openDB} from 'idb';
-import {getAccessToken} from './auth.js';
-import {Deferred, getDatesInRange, hashObj, mergeSortedArrays, toISODate} from './utils.js';
-import {WebVitalsError} from './WebVitalsError.js';
-
+import { openDB } from "idb";
+import { getAccessToken } from "./auth.js";
+import {
+  Deferred,
+  getDatesInRange,
+  hashObj,
+  mergeSortedArrays,
+  toISODate,
+} from "./utils.js";
+import { WebVitalsError } from "./WebVitalsError.js";
 
 const MANAGEMENT_API_URL =
-    'https://www.googleapis.com/analytics/v3/management/';
+  "https://www.googleapis.com/analytics/v3/management/";
 
 const REPORTING_API_URL =
-    'https://analyticsreporting.googleapis.com/v4/reports:batchGet';
-
+  "https://analyticsreporting.googleapis.com/v4/reports:batchGet";
 
 function getAuthHeaders() {
   return {
-    'authorization': `Bearer ${getAccessToken()}`,
+    authorization: `Bearer ${getAccessToken()}`,
   };
 }
 
@@ -40,18 +44,18 @@ async function makeManagementAPIRequest(method) {
 
   do {
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers: getAuthHeaders(),
     });
     responseJSON = await response.json();
     rows = rows.concat(responseJSON.items);
-  } while (url = responseJSON.nextLink);
+  } while ((url = responseJSON.nextLink));
 
   return rows;
 }
 
 export function getAccountSummaries() {
-  return makeManagementAPIRequest('accountSummaries');
+  return makeManagementAPIRequest("accountSummaries");
 }
 
 let segments;
@@ -59,13 +63,13 @@ const segmentMap = new Map();
 
 export async function getSegments() {
   if (!segments) {
-    segments = await makeManagementAPIRequest('segments');
+    segments = await makeManagementAPIRequest("segments");
 
     for (const segment of segments) {
       // Rename the "Desktop and Tablet Traffic" segment to "Desktop Traffic"
       // for consistency with CrUX and PSI.
-      if (segment.name === 'Tablet and Desktop Traffic') {
-        segment.name = 'Desktop Traffic';
+      if (segment.name === "Tablet and Desktop Traffic") {
+        segment.name = "Desktop Traffic";
       }
 
       // segment.name = sanitizeSegmentName(segment.name);
@@ -94,8 +98,8 @@ export function getSegmentNameById(id) {
 function getSegmentIdByName(segmentName, reportRequest) {
   // Rename the "Desktop and Tablet Traffic" segment to "Desktop Traffic"
   // for consistency with CrUX and PSI.
-  if (segmentName === 'Tablet and Desktop Traffic') {
-    return '-15';
+  if (segmentName === "Tablet and Desktop Traffic") {
+    return "-15";
   }
 
   for (const segment of reportRequest.segments) {
@@ -113,12 +117,11 @@ function getSegmentIdByName(segmentName, reportRequest) {
 export function getReport(reportRequest, onProgress) {
   // Use the cache-aware API function if available, otherwise use the
   // standard API request function without caching.
-  if (typeof getReportFromCacheAndAPI === 'function') {
+  if (typeof getReportFromCacheAndAPI === "function") {
     return getReportFromCacheAndAPI(reportRequest, onProgress);
   }
   return getReportFromAPI(reportRequest, onProgress);
 }
-
 
 // Technically it's 10, but we're making it lower just to be safe and account
 // for requests from other tools happening at the same time.
@@ -154,7 +157,7 @@ export async function makeReportingAPIRequest(reportRequest) {
     await concurrentRequestsCountLessThanMax();
 
     const response = await fetch(REPORTING_API_URL, {
-      method: 'POST',
+      method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({
         reportRequests: [reportRequest],
@@ -174,34 +177,39 @@ export async function makeReportingAPIRequest(reportRequest) {
 export async function getReportFromAPI(reportRequest, onProgress) {
   const rows = await getReportRowsFromAPI(reportRequest, onProgress);
   const source = sourcesNameMap[sources.NETWORK];
-  return {rows, meta: {source}};
+  return { rows, meta: { source } };
 }
 
 async function getReportRowsFromAPI(reportRequest, onProgress) {
   let totalRows;
   let report;
   let rows = [];
+  //reportRequest.samplingLevel = "LARGE";
 
-  const segmentDimensionIndex =
-      reportRequest.dimensions.findIndex((dim) => dim.name === 'ga:segment');
+  const segmentDimensionIndex = reportRequest.dimensions.findIndex(
+    (dim) => dim.name === "ga:segment"
+  );
 
   do {
     report = await makeReportingAPIRequest(reportRequest);
 
+    //console.log(report.data);
     totalRows = report.data.rowCount;
 
     // Reports will be truncated after a million rows, so if this report
     // contains a million rows, try to break it up by requesting individual
     // dates.
     if (totalRows >= 1e6) {
-      const {startDate, endDate} = reportRequest.dateRanges[0];
+      const { startDate, endDate } = reportRequest.dateRanges[0];
+      //console.log("keys", Object.keys(report.data));
+
       if (startDate !== endDate) {
         const dateRanges = getDatesInRange(startDate, endDate).map((date) => {
-          return {startDate: date, endDate: date};
+          return { startDate: date, endDate: date };
         });
         return await getReportRowsByDatesFromAPI(reportRequest, dateRanges);
       } else {
-        throw new WebVitalsError('row_limit_exceeded');
+        throw new WebVitalsError("row_limit_exceeded");
       }
     }
 
@@ -210,7 +218,7 @@ async function getReportRowsFromAPI(reportRequest, onProgress) {
     }
 
     if (onProgress) {
-      const abort = await onProgress({rows, totalRows});
+      const abort = await onProgress({ rows, totalRows });
       if (abort) {
         return;
       }
@@ -228,7 +236,7 @@ async function getReportRowsFromAPI(reportRequest, onProgress) {
   // you want (e.g. if you're reporting total values), but since we're going
   // to be constructing a distribution from these values, we want to the
   // original values as sent.
-  const {samplesReadCounts, samplingSpaceSizes} = report.data;
+  const { samplesReadCounts, samplingSpaceSizes } = report.data;
   if (samplesReadCounts) {
     const sampleRate = samplesReadCounts[0] / samplingSpaceSizes[0];
     for (const row of rows) {
@@ -243,7 +251,9 @@ async function getReportRowsFromAPI(reportRequest, onProgress) {
   if (segmentDimensionIndex > -1) {
     for (const row of rows) {
       const segmentId = getSegmentIdByName(
-          row.dimensions[segmentDimensionIndex], reportRequest);
+        row.dimensions[segmentDimensionIndex],
+        reportRequest
+      );
 
       row.dimensions[segmentDimensionIndex] = segmentId;
     }
@@ -251,7 +261,6 @@ async function getReportRowsFromAPI(reportRequest, onProgress) {
 
   return rows;
 }
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // NOTE: everything below this line deals with caching request data for
@@ -261,11 +270,10 @@ async function getReportRowsFromAPI(reportRequest, onProgress) {
 // code is largely not necessary and can be deleted.
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
-
-const dbPromise = openDB('web-vitals-cache', 1, {
+const dbPromise = openDB("web-vitals-cache", 1, {
   upgrade(db) {
-    db.createObjectStore('data', {
-      keyPath: ['viewId', 'segmentId', 'optsHash', 'date'],
+    db.createObjectStore("data", {
+      keyPath: ["viewId", "segmentId", "optsHash", "date"],
     });
   },
 });
@@ -278,12 +286,12 @@ async function getCachedData(viewId, segmentId, optsHash, startDate, endDate) {
   const db = await getDB();
   const range = IDBKeyRange.bound(
     [viewId, segmentId, optsHash, startDate],
-    [viewId, segmentId, optsHash, endDate],
+    [viewId, segmentId, optsHash, endDate]
   );
-  const results = await db.getAll('data', range);
+  const results = await db.getAll("data", range);
 
   const cachedData = {};
-  for (const {date, json} of results) {
+  for (const { date, json } of results) {
     cachedData[date] = JSON.parse(json);
   }
   return cachedData;
@@ -312,7 +320,7 @@ async function updateCachedData(viewId, optsHash, rows) {
   const db = await getDB();
   for (const [date, segmentData] of dateData) {
     for (const [segmentId, rows] of segmentData) {
-      await db.put('data', {
+      await db.put("data", {
         viewId,
         segmentId,
         optsHash,
@@ -324,7 +332,7 @@ async function updateCachedData(viewId, optsHash, rows) {
 }
 
 function getMissingRanges(reportRequest, cachedData) {
-  const {startDate, endDate} = reportRequest.dateRanges[0];
+  const { startDate, endDate } = reportRequest.dateRanges[0];
 
   const missingRanges = [];
   let missingRangeStart;
@@ -359,19 +367,32 @@ const sources = {
 };
 
 const sourcesNameMap = Object.fromEntries(
-    Object.entries(sources).map(([k, v]) => [v, k.toLowerCase()]));
+  Object.entries(sources).map(([k, v]) => [v, k.toLowerCase()])
+);
 
 async function getReportFromCacheAndAPI(reportRequest) {
-  const {viewId, segments, dimensions, dimensionFilterClauses} = reportRequest;
-  const {startDate, endDate} = reportRequest.dateRanges[0];
-  const optsHash = await hashObj({dimensions, dimensionFilterClauses});
+  const {
+    viewId,
+    segments,
+    dimensions,
+    dimensionFilterClauses,
+  } = reportRequest;
+  const { startDate, endDate } = reportRequest.dateRanges[0];
+  const optsHash = await hashObj({ dimensions, dimensionFilterClauses });
 
   // Start by populating the report with all available cached data
   // for the segments and dates specified.
-  const cachedData = await Promise.all(segments.map(({segmentId}) => {
-    return getCachedData(
-        viewId, segmentId.slice(6), optsHash, startDate, endDate);
-  }));
+  const cachedData = await Promise.all(
+    segments.map(({ segmentId }) => {
+      return getCachedData(
+        viewId,
+        segmentId.slice(6),
+        optsHash,
+        startDate,
+        endDate
+      );
+    })
+  );
 
   let cachedReport = [];
   for (const segment of cachedData) {
@@ -382,28 +403,34 @@ async function getReportFromCacheAndAPI(reportRequest) {
 
   const missingRangesFromCache = getMissingRanges(reportRequest, cachedData);
 
-  const networkReport =
-    await getReportRowsByDatesFromAPI(reportRequest, missingRangesFromCache);
+  const networkReport = await getReportRowsByDatesFromAPI(
+    reportRequest,
+    missingRangesFromCache
+  );
 
   // Don't await.
   updateCachedData(viewId, optsHash, networkReport);
 
   const rows = mergeReportRows(cachedReport, networkReport);
-  const source = sourcesNameMap[
+  const source =
+    sourcesNameMap[
       (missingRangesFromCache.length ? sources.NETWORK : 0) +
-      (cachedReport.length ? sources.CACHE : 0)];
+        (cachedReport.length ? sources.CACHE : 0)
+    ];
 
-  return {rows, meta: {source}};
+  return { rows, meta: { source } };
 }
 
 async function getReportRowsByDatesFromAPI(reportRequest, dateRanges) {
   const rows = await Promise.all(
     dateRanges.map(async (dateRange) => {
-      const newReportRequest =
-          getReportRequestForDates(reportRequest, dateRange);
+      const newReportRequest = getReportRequestForDates(
+        reportRequest,
+        dateRange
+      );
 
       return await getReportRowsFromAPI(newReportRequest);
-    }),
+    })
   );
 
   return rows.reduce((prev, next) => mergeReportRows(prev, next), []);

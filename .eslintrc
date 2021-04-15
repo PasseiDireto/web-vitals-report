@@ -23,5 +23,6 @@
     "require-atomic-updates": 0,
     "require-jsdoc": 0,
     "valid-jsdoc": 0,
+    "linebreak-style": "off"
   }
 }

@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-import {getReport, getSegmentNameById} from './api.js';
-import {WebVitalsError} from './WebVitalsError.js';
-
+import { getReport, getSegmentNameById } from "./api.js";
+import { WebVitalsError } from "./WebVitalsError.js";
 
 export function getDefaultOpts() {
   return {
     active: false,
-    metricNameDim: 'ga:eventAction',
-    metricIdDim: 'ga:eventLabel',
-    lcpName: 'LCP',
-    fidName: 'FID',
-    clsName: 'CLS',
-    filters: '',
+    metricNameDim: "ga:eventAction",
+    metricIdDim: "ga:eventLabel",
+    lcpName: "LCP",
+    fidName: "FID",
+    clsName: "CLS",
+    filters: "",
   };
 }
 
@@ -35,20 +34,19 @@ function getViewOpts(state) {
   return stateOpts && stateOpts.active ? stateOpts : getDefaultOpts();
 }
 
-
 export async function getWebVitalsData(state) {
   const reportRequest = buildReportRequest(state);
-  const {rows, meta} = await getReport(reportRequest);
+  const { rows, meta } = await getReport(reportRequest);
 
   const opts = getViewOpts(state);
   const metricNameMap = {
-    [opts.lcpName]: 'LCP',
-    [opts.fidName]: 'FID',
-    [opts.clsName]: 'CLS',
+    [opts.lcpName]: "LCP",
+    [opts.fidName]: "FID",
+    [opts.clsName]: "CLS",
   };
 
   if (rows.length === 0) {
-    throw new WebVitalsError('no_web_vitals_events');
+    throw new WebVitalsError("no_web_vitals_events");
   }
 
   const getSegmentsObj = (getDefaultValue = () => []) => {
@@ -69,30 +67,31 @@ export async function getWebVitalsData(state) {
   };
 
   const incrementCount = (obj) => {
-    if (!Object.prototype.hasOwnProperty.call(obj, 'count')) {
-      Object.defineProperty(obj, 'count', {writable: true, value: 0});
+    if (!Object.prototype.hasOwnProperty.call(obj, "count")) {
+      Object.defineProperty(obj, "count", { writable: true, value: 0 });
     }
     obj.count++;
   };
 
   const data = {
     metrics: getMetricsObj(() => {
-      return {values: [], segments: getSegmentsObj(), dates: {}};
+      return { values: [], segments: getSegmentsObj(), dates: {} };
     }),
-    countries: [],
     pages: [],
+    pageGroup: [],
+    debugEvents: [],
   };
 
   for (const row of rows) {
     let value = Number(row.metrics[0].values[0]);
-    let [segmentId, date, metric, country, page] = row.dimensions;
+    let [segmentId, date, metric, pageGroup, debugEvent] = row.dimensions;
     const segment = getSegmentNameById(segmentId);
 
     // Convert the metric from any custom name to the standard name.
     metric = metricNameMap[metric];
 
     // CLS is sent to Google Analytics at 1000x for greater precision.
-    if (metric === 'CLS') {
+    if (metric === "CLS") {
       value = value / 1000;
     }
 
@@ -103,8 +102,8 @@ export async function getWebVitalsData(state) {
     // The only solution to this is to make more granular requests (e.g.
     // reduce the date range or add filters) and manually combine the data
     // yourself.
-    if (metric !== 'LCP' && metric !== 'FID' && metric !== 'CLS') {
-      throw new WebVitalsError('unexpected_metric', metric);
+    if (metric !== "LCP" && metric !== "FID" && metric !== "CLS") {
+      throw new WebVitalsError("unexpected_metric", metric);
     }
 
     const metricData = data.metrics[metric];
@@ -119,21 +118,31 @@ export async function getWebVitalsData(state) {
     metricData.dates[date][segment].push(value);
 
     // Breakdown by page.
-    data.pages[page] = data.pages[page] || getMetricsObj();
-    data.pages[page][metric][segment].push(value);
-    incrementCount(data.pages[page]);
+    data.pages[pageGroup] = data.pages[pageGroup] || getMetricsObj();
+    data.pages[pageGroup][metric][segment].push(value);
+    incrementCount(data.pages[pageGroup]);
 
-    // Breakdown by country.
-    data.countries[country] = data.countries[country] || getMetricsObj();
-    data.countries[country][metric][segment].push(value);
-    incrementCount(data.countries[country]);
+    // Breakdown by pagegroup
+    data.pageGroup[pageGroup] = data.pageGroup[pageGroup] || getMetricsObj();
+    data.pageGroup[pageGroup][metric][segment].push(value);
+    incrementCount(data.pageGroup[pageGroup]);
+
+    // Breakdown by debugEvent
+    data.debugEvents[debugEvent] =
+      data.debugEvents[debugEvent] || getMetricsObj(() => ({}));
+    if (!data.debugEvents[debugEvent][metric][pageGroup])
+      data.debugEvents[debugEvent][metric][pageGroup] = [];
+    data.debugEvents[debugEvent][metric][pageGroup].push(value);
+    incrementCount(data.debugEvents[debugEvent]);
   }
+  // console.log(data.debugEvents);
 
   // Sort data
   function sortObjByCount(obj) {
     const newObj = {};
-    const sortedKeys =
-        Object.keys(obj).sort((a, b) => obj[b].count - obj[a].count);
+    const sortedKeys = Object.keys(obj).sort(
+      (a, b) => obj[b].count - obj[a].count
+    );
 
     for (const key of sortedKeys) {
       newObj[key] = obj[key];
@@ -142,22 +151,23 @@ export async function getWebVitalsData(state) {
   }
 
   // Sort data by count.
-  data.countries = sortObjByCount(data.countries);
   data.pages = sortObjByCount(data.pages);
+  data.pageGroup = sortObjByCount(data.pageGroup);
+  data.debugEvents = sortObjByCount(data.debugEvents);
 
-  return {data, rows, meta};
+  return { data, rows, meta };
 }
 
 function parseFilters(filtersExpression) {
   if (filtersExpression.match(/[^\\],/)) {
-    throw new WebVitalsError('unsupported_filter_expression');
+    throw new WebVitalsError("unsupported_filter_expression");
   }
 
   // TODO: add support for escaping semicolons.
-  return filtersExpression.split(';').map((expression) => {
+  return filtersExpression.split(";").map((expression) => {
     const match = /(ga:\w+)([!=][=@~])(.+)$/.exec(expression);
     if (!match) {
-      throw new WebVitalsError('invalid_filter_expression', expression);
+      throw new WebVitalsError("invalid_filter_expression", expression);
     }
 
     const filter = {
@@ -165,29 +175,29 @@ function parseFilters(filtersExpression) {
       expressions: [match[3]],
     };
 
-    if (match[2].startsWith('!')) {
+    if (match[2].startsWith("!")) {
       filter.not = true;
     }
 
-    if (match[2].endsWith('=')) {
-      filter.operator = 'EXACT';
-    } else if (match[2].endsWith('@')) {
-      filter.operator = 'PARTIAL';
-    } else if (match[3].endsWith('~')) {
-      filter.operator = 'REGEXP';
+    if (match[2].endsWith("=")) {
+      filter.operator = "EXACT";
+    } else if (match[2].endsWith("@")) {
+      filter.operator = "PARTIAL";
+    } else if (match[3].endsWith("~")) {
+      filter.operator = "REGEXP";
     }
     return filter;
   });
 }
 
 function buildReportRequest(state) {
-  const {viewId, startDate, endDate, segmentA, segmentB} = state;
+  const { viewId, startDate, endDate, segmentA, segmentB } = state;
   const opts = getViewOpts(state);
 
   let filters = [
     {
       dimensionName: opts.metricNameDim,
-      operator: 'IN_LIST',
+      operator: "IN_LIST",
       expressions: [opts.lcpName, opts.fidName, opts.clsName],
     },
   ];
@@ -200,32 +210,32 @@ function buildReportRequest(state) {
     viewId,
     pageSize: 100000,
     includeEmptyRows: true,
-    dateRanges: [{startDate, endDate}],
+    dateRanges: [{ startDate, endDate }],
     segments: [
-      {segmentId: `gaid::${segmentA}`},
-      {segmentId: `gaid::${segmentB}`},
+      { segmentId: `gaid::${segmentA}` },
+      { segmentId: `gaid::${segmentB}` },
     ],
-    metrics: [{expression: 'ga:eventValue'}],
+    metrics: [{ expression: "ga:eventValue" }],
     dimensions: [
-      {name: 'ga:segment'},
-      {name: 'ga:date'},
-      {name: opts.metricNameDim}, // Metric name (ga:eventAction)
-      {name: 'ga:country'},
-      {name: 'ga:pagePath'},
-      {name: opts.metricIdDim}, // Unique metric ID (ga:eventLabel)
+      { name: "ga:segment" },
+      { name: "ga:date" },
+      { name: opts.metricNameDim }, // Metric name (ga:eventAction)
+      { name: "ga:contentGroup1" },
+      { name: "ga:dimension2" }, //causador de cls
+      { name: opts.metricIdDim }, // Unique metric ID (ga:eventLabel)
     ],
     dimensionFilterClauses: {
-      operator: 'AND',
+      operator: "AND",
       filters,
     },
     orderBys: [
       {
-        fieldName: 'ga:eventValue',
-        sortOrder: 'ASCENDING',
+        fieldName: "ga:eventValue",
+        sortOrder: "ASCENDING",
       },
       {
-        fieldName: 'ga:date',
-        sortOrder: 'ASCENDING',
+        fieldName: "ga:date",
+        sortOrder: "ASCENDING",
       },
     ],
   };

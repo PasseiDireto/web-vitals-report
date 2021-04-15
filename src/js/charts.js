@@ -16,12 +16,17 @@
 
 /* global Highcharts */
 
-import {e} from './utils.js';
+import { e } from "./utils.js";
+import pageGroup from "./tables/pageGroup";
+import debugEvents from "./tables/debugEvents";
 
+const tables = [
+  { name: "pageGroup", fns: pageGroup, title: "Page Groups" },
+  { name: "debugEvents", fns: debugEvents, title: "Debug Events" },
+];
+const COLORS = ["#aaa", "hsla(218, 88%, 50%, 0.7)"];
 
-const COLORS = ['#aaa', 'hsla(218, 88%, 50%, 0.7)'];
-
-function bucketValues(arrayOfValues, {maxValue, bucketSize = 10} = {}) {
+function bucketValues(arrayOfValues, { maxValue, bucketSize = 10 } = {}) {
   maxValue = maxValue || arrayOfValues[arrayOfValues.length - 1];
 
   const bucketMap = {};
@@ -60,36 +65,43 @@ function drawHistogram({
 
   const dimensionBuckets = {};
   for (const [dimension, values] of Object.entries(dimensionValues)) {
-    dimensionBuckets[dimension] = bucketValues(values, {maxValue, bucketSize});
+    dimensionBuckets[dimension] = bucketValues(values, {
+      maxValue,
+      bucketSize,
+    });
   }
 
   // Sort the dimensions to ensure series order is deterministic (otherwise
   // the colors applied to each series could change based on the data passed).
   const series = Object.keys(dimensionBuckets).map((key) => {
     return {
-      type: 'column',
+      type: "column",
       name: key,
       data: dimensionBuckets[key],
     };
   });
 
   Highcharts.chart(container, {
-    title: {text: `${metric} distribution`},
+    title: { text: `${metric} distribution` },
     colors: COLORS,
-    xAxis: [{
-      title: {text: 'Time (ms)'},
-      categories: allBuckets,
-      lineColor: '#9e9e9e',
-    }],
-    yAxis: [{
-      title: {text: 'Count'},
-    }],
+    xAxis: [
+      {
+        title: { text: "Time (ms)" },
+        categories: allBuckets,
+        lineColor: "#9e9e9e",
+      },
+    ],
+    yAxis: [
+      {
+        title: { text: "Count" },
+      },
+    ],
     plotOptions: {
       column: {
         grouping: false,
         pointPadding: 0,
         groupPadding: 0,
-        pointPlacement: 'between',
+        pointPlacement: "between",
         opacity: 0.8,
       },
     },
@@ -102,11 +114,16 @@ function drawTimeline(name, dateValues) {
 
   for (const [date, values] of Object.entries(dateValues)) {
     const timestamp = Date.UTC(
-        date.slice(0, 4), date.slice(4, 6) - 1, date.slice(6));
+      date.slice(0, 4),
+      date.slice(4, 6) - 1,
+      date.slice(6)
+    );
 
     for (const segmentName of Object.keys(values)) {
-      seriesObj[segmentName] =
-          seriesObj[segmentName] || {name: segmentName, data: []};
+      seriesObj[segmentName] = seriesObj[segmentName] || {
+        name: segmentName,
+        data: [],
+      };
 
       const segmentValues = values[segmentName];
       if (segmentValues.length > 8) {
@@ -117,11 +134,11 @@ function drawTimeline(name, dateValues) {
   }
 
   Highcharts.chart(`timeline-${name}`, {
-    chart: {type: 'spline'},
+    chart: { type: "spline" },
     colors: COLORS,
-    title: {text: `${name} over time (p75)`},
-    xAxis: {type: 'datetime'},
-    yAxis: {min: 0},
+    title: { text: `${name} over time (p75)` },
+    xAxis: { type: "datetime" },
+    yAxis: { min: 0 },
     series: [...Object.values(seriesObj)],
   });
 }
@@ -136,9 +153,10 @@ function drawSummary(metric, segments) {
     html += `
     <span class="Report-metricSummaryItem">
       ${e(name)}
-      <span class="Score Score--alt Score--${score(metric, result)}">${
+      <span class="Score Score--alt Score--${score(
+        metric,
         result
-      }</span>
+      )}">${result}</span>
     </span>
   `;
   }
@@ -146,73 +164,34 @@ function drawSummary(metric, segments) {
   $el.innerHTML = html;
 }
 
-function drawTable(id, dimensionName, dimensionData) {
-  const metricNames = Object.keys(dimensionData[0][1]);
-  const segmentNames = Object.keys(dimensionData[0][1][metricNames[0]]);
-
-  document.getElementById(id).innerHTML = `
-    <thead>
-      <tr>
-        <th class="Table-dimension">${e(dimensionName)}</th>
-        <th class="Table-segment">Segment</th>
-        ${metricNames.map((metric) => {
-          return `<th class="Table-metric">${e(metric)}</th>`;
-        }).join('')}
-      </tr>
-    </thead>
-    <tbody>
-      ${dimensionData.slice(0, 5).map(([dimension, values]) => {
-        return segmentNames.map((segment, i) => `<tr>
-          ${i === 0
-            ? `<td class="Table-dimension" rowspan="2">${e(dimension)}</td>`
-            : ''}
-          <td class="Table-segment">${e(segment)}</td>
-          ${metricNames.map((metric) => {
-            const result = p75(values[metric][segment]);
-            return `
-              <td>
-                <div class="Score Score--${score(metric, result)}">
-                  ${result}
-                </div>
-              </td>
-            `;
-          }).join('')}
-        </tr>`).join('');
-      }).join('')}
-    </tbody>
-  `;
-}
-
-function score(metric, p75) {
+function score(metric, p75Value) {
   const thresholds = {
     LCP: [2500, 4000],
     FID: [100, 300],
     CLS: [0.1, 0.25],
-    // LCP: [1100, 2000],
-    // FID: [4, 10],
-    // CLS: [0.1, 0.25],
   };
-  if (p75 <= thresholds[metric][0]) {
-    return 'good';
+  if (p75Value <= thresholds[metric][0]) {
+    return "good";
   }
-  if (p75 <= thresholds[metric][1]) {
-    return 'ni';
+  if (p75Value <= thresholds[metric][1]) {
+    return "ni";
   }
-  if (p75 > thresholds[metric][1]) {
-    return 'poor';
+  if (p75Value > thresholds[metric][1]) {
+    return "poor";
   }
-  return 'unknown';
+  return "unknown";
 }
 
 function p(percentile, values) {
-  return values[Math.floor((values.length) * (percentile / 100))];
+  return values[Math.floor(values.length * (percentile / 100))];
 }
 
 function p75(values) {
-  if (values && values.length > 8) {
+  const MIN_SIZE_TO_EVALUATE = 1; //8
+  if (values && values.length > MIN_SIZE_TO_EVALUATE) {
     return p(75, values);
   }
-  return '-'; // Insufficient data
+  return "-"; // Insufficient data
 }
 
 export function renderCharts(data) {
@@ -225,7 +204,7 @@ export function renderCharts(data) {
     const p98 = p(98, metric.values);
 
     switch (name) {
-      case 'LCP':
+      case "LCP":
         maxValue = Math.max(Math.ceil(p98 / 1000) * 1000, 3000);
 
         bucketSize = 100;
@@ -236,7 +215,7 @@ export function renderCharts(data) {
           bucketSize = 500;
         }
         break;
-      case 'FID':
+      case "FID":
         maxValue = Math.max(Math.ceil(p95 / 50) * 50, 50);
         bucketSize = 1;
         if (maxValue > 100) {
@@ -249,7 +228,7 @@ export function renderCharts(data) {
           bucketSize = 10;
         }
         break;
-      case 'CLS':
+      case "CLS":
         maxValue = Math.max(Math.ceil(p95 * 10) / 10, 0.1);
         bucketSize = 0.01;
         if (maxValue > 0.3) {
@@ -274,8 +253,9 @@ export function renderCharts(data) {
     drawTimeline(name, metric.dates);
   }
 
-  drawTable('countries', 'Country', [...Object.entries(data.countries)]);
-  drawTable('pages', 'Page', [...Object.entries(data.pages)]);
+  tables.map(table => {
+    table.fns.drawTable(`${table.name}` , `${table.title}`, [...Object.entries(data[`${table.name}`])], e, p75, score);
+  });
 
-  document.getElementById('report').hidden = false;
+  document.getElementById("report").hidden = false;
 }
