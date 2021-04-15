@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-import {html, render, svg} from 'lit-html';
-import {nextFrame, timeout} from './utils.js';
-
+import { html, render, svg } from "lit-html";
+import { nextFrame, timeout } from "./utils.js";
 
 const ALERT_TRANSITION_TIME = 200;
-const DEFAULT_TITLE = 'Oops, something went wrong!';
+const DEFAULT_TITLE = "Oops, something went wrong!";
 
 const state = {};
 let alertShowing = false;
@@ -37,21 +36,19 @@ function renderIcon(id) {
 }
 
 function renderAlert() {
-  const classes = ['Alert'];
-  if (state.isTransitioning) classes.push('Alert--isTransitioning');
-  if (state.isActive) classes.push('Alert--isActive');
+  const classes = ["Alert"];
+  if (state.isTransitioning) classes.push("Alert--isTransitioning");
+  if (state.isActive) classes.push("Alert--isActive");
 
   return html`
-    <div class=${classes.join(' ')}>
-      <div class="Alert-icon">
-        ${renderIcon('error-outline')}
-      </div>
+    <div class=${classes.join(" ")}>
+      <div class="Alert-icon">${renderIcon("error-outline")}</div>
       <div class="Alert-body">
         <h1 class="Alert-title">${state.title}</h1>
         <div class="Alert-message">${state.message}</div>
       </div>
       <button @click=${remove} class="Alert-close">
-        ${renderIcon('close')}
+        ${renderIcon("close")}
       </button>
     </div>
   `;
@@ -64,11 +61,16 @@ function onContainerClick(event) {
 }
 
 function renderAlertContainer() {
-  render(alertShowing ? html`
-    <div @click=${onContainerClick} class="AlertContainer">
-      ${renderAlert()}
-    </div>
-  ` : undefined, document.getElementById('alerts'));
+  render(
+    alertShowing
+      ? html`
+          <div @click=${onContainerClick} class="AlertContainer">
+            ${renderAlert()}
+          </div>
+        `
+      : undefined,
+    document.getElementById("alerts")
+  );
 }
 
 async function transition(isActive) {
@@ -105,5 +107,5 @@ export async function addAlert(error) {
   renderAlertContainer();
 
   await transition(true);
-  document.getElementById('alerts').focus();
+  document.getElementById("alerts").focus();
 }

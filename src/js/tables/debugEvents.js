@@ -1,15 +1,17 @@
 const NUMBER_OF_LINES = 20;
-function drawTable(id, dimensionName, worstNodes, e, p75, score) {
-  console.log(worstNodes);
-  const metricNames = Object.keys(worstNodes[0][1]);
-  let existingPageGroups = worstNodes.reduce((acc, [eventGroup, metrics]) => {
-    const lcp = Object.keys(metrics.LCP);
-    const cls = Object.keys(metrics.CLS);
-    const fid = Object.keys(metrics.FID);
-    return acc.concat(lcp).concat(cls).concat(fid);
-  }, []);
+function drawTable({ tableId, dimensionName, dimensionData, e, p75, score }) {
+  console.log(dimensionData);
+  const metricNames = Object.keys(dimensionData[0][1]);
+  let existingPageGroups = dimensionData.reduce(
+    (acc, [eventGroup, metrics]) => {
+      const lcp = Object.keys(metrics.LCP);
+      const cls = Object.keys(metrics.CLS);
+      const fid = Object.keys(metrics.FID);
+      return acc.concat(lcp).concat(cls).concat(fid);
+    },
+    []
+  );
   existingPageGroups = [...new Set(existingPageGroups)];
-
 
   const pageGroupsInNode = (metrics) => {
     const lcp = Object.keys(metrics.LCP);
@@ -36,7 +38,7 @@ function drawTable(id, dimensionName, worstNodes, e, p75, score) {
       })
       .join("");
 
-  document.getElementById(id).innerHTML = `
+  document.getElementById(tableId).innerHTML = `
       <thead>
         <tr>
           <th class="Table-dimension">${e(dimensionName)}</th>
@@ -49,7 +51,7 @@ function drawTable(id, dimensionName, worstNodes, e, p75, score) {
         </tr>
       </thead>
       <tbody>
-        ${worstNodes
+        ${dimensionData
           .slice(0, NUMBER_OF_LINES)
           .map(([node, values]) => {
             const pageGroups = pageGroupsInNode(values);

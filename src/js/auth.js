@@ -45,11 +45,11 @@ export async function userIsSignedIn() {
   const isSignedIn = await checkAuthStatus();
 
   await new Promise((resolve, reject) => {
-    gapi.signin2.render('google-signin2', {
+    gapi.signin2.render("google-signin2", {
       width: 240,
       height: 50,
       longtitle: true,
-      theme: 'dark',
+      theme: "dark",
       onsuccess: resolve,
       onfailure: reject,
     });

@@ -15,44 +15,45 @@
  */
 
 const errorMap = {
-  'no_web_vitals_events': {
-    title: 'No Web Vitals events found...',
+  no_web_vitals_events: {
+    title: "No Web Vitals events found...",
     message: [
-      'It looks like no Web Vitals data has been sent to this Google',
-      'Analytics account. You can learn how to measure and send Web Vitals',
-      'data here: https://github.com/GoogleChrome/web-vitals',
-    ].join(' '),
+      "It looks like no Web Vitals data has been sent to this Google",
+      "Analytics account. You can learn how to measure and send Web Vitals",
+      "data here: https://github.com/GoogleChrome/web-vitals",
+    ].join(" "),
   },
-  'row_limit_exceeded': {
-    title: 'Sorry, cannot create report...',
+  row_limit_exceeded: {
+    title: "Sorry, cannot create report...",
     message: [
-      'This account contains more than 1 million Web Vitals events per',
-      'day, which is the maximum that can be reported on using the API.',
-    ].join(' '),
+      "This account contains more than 1 million Web Vitals events per",
+      "day, which is the maximum that can be reported on using the API.",
+    ].join(" "),
   },
-  'unsupported_filter_expression': {
-    title: 'Unsupported filter expression...',
+  unsupported_filter_expression: {
+    title: "Unsupported filter expression...",
     message: [
-      'OR based filter expressions (using a comma) are not supported.',
-      'Only AND based filter expressions (using a semicolon) are allowed.',
-    ].join(' '),
+      "OR based filter expressions (using a comma) are not supported.",
+      "Only AND based filter expressions (using a semicolon) are allowed.",
+    ].join(" "),
   },
-  'invalid_filter_expression': {
-    title: 'Invalid filter expression...',
+  invalid_filter_expression: {
+    title: "Invalid filter expression...",
     message: [
-      'Filter expression "%s" is not valid. See:',
-      'https://github.com/GoogleChromeLabs/web-vitals-report#filter-reference',
-    ].join(' '),
+      "Filter expression \"%s\" is not valid. See:",
+      "https://github.com/GoogleChromeLabs/web-vitals-report#filter-reference",
+    ].join(" "),
   },
-  'unexpected_metric': {
-    title: 'Unexpected metric',
-    message: 'The report contained a metric named "%s", which is not a valid.',
+  unexpected_metric: {
+    title: "Unexpected metric",
+    message: `The report contained a metric named "%s",
+    which is not a valid.`,
   },
 };
 
 export class WebVitalsError extends Error {
   constructor(code, ...params) {
-    let {title, message} = errorMap[code];
+    let { title, message } = errorMap[code];
 
     for (const param of params) {
       message = message.replace(/%s/, param);

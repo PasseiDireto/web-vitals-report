@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-import fs from 'fs-extra';
-import globby from 'globby';
-import nodeResolve from '@rollup/plugin-node-resolve';
-import replace from '@rollup/plugin-replace';
-import cssnano from 'cssnano';
-import nunjucks from 'nunjucks';
-import postcss from 'postcss';
-import atImport from 'postcss-import';
-import {terser} from 'rollup-plugin-terser';
-
+import fs from "fs-extra";
+import globby from "globby";
+import nodeResolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
+import cssnano from "cssnano";
+import nunjucks from "nunjucks";
+import postcss from "postcss";
+import atImport from "postcss-import";
+import { terser } from "rollup-plugin-terser";
 
 nunjucks.configure({
   noCache: true,
@@ -32,32 +31,39 @@ nunjucks.configure({
 });
 
 const compileCSS = async (srcPath) => {
-  const css = await fs.readFile(srcPath, 'utf-8');
+  const css = await fs.readFile(srcPath, "utf-8");
   const plugins = [atImport()];
-  if (process.env.NODE_ENV === 'production') {
-    plugins.push(cssnano({preset: ['default', {
-      discardComments: {removeAll: true},
-    }]}));
+  if (process.env.NODE_ENV === "production") {
+    plugins.push(
+      cssnano({
+        preset: [
+          "default",
+          {
+            discardComments: { removeAll: true },
+          },
+        ],
+      })
+    );
   }
 
-  const result = await postcss(plugins).process(css, {from: srcPath});
+  const result = await postcss(plugins).process(css, { from: srcPath });
   return result.css;
 };
 
 function buildCSS() {
   return {
-    name: 'built-css',
+    name: "built-css",
     async buildStart() {
-      const srcFiles = await globby('./src/**/*.css');
+      const srcFiles = await globby("./src/**/*.css");
       for (const file of srcFiles) {
         this.addWatchFile(file);
       }
     },
     async generateBundle() {
       this.emitFile({
-        type: 'asset',
-        fileName: 'main.css',
-        source: await compileCSS('./src/main.css'),
+        type: "asset",
+        fileName: "main.css",
+        source: await compileCSS("./src/main.css"),
       });
     },
   };
@@ -65,24 +71,24 @@ function buildCSS() {
 
 function buildHTML() {
   return {
-    name: 'build-html',
+    name: "build-html",
     buildStart() {
-      this.addWatchFile('./src/index.html');
+      this.addWatchFile("./src/index.html");
     },
     async generateBundle() {
       const [oauthData, template] = await Promise.all([
-        fs.readJSON('./oauth.config.json', 'utf-8'),
-        fs.readFile('./src/index.html', 'utf-8'),
+        fs.readJSON("./oauth.config.json", "utf-8"),
+        fs.readFile("./src/index.html", "utf-8"),
       ]);
 
       const data = {
-        client_id: oauthData.client_ids[process.env.NODE_ENV || 'development'],
+        client_id: oauthData.client_ids[process.env.NODE_ENV || "development"],
         scope: oauthData.scope,
       };
 
       this.emitFile({
-        type: 'asset',
-        fileName: 'index.html',
+        type: "asset",
+        fileName: "index.html",
         source: nunjucks.renderString(template, data),
       });
     },
@@ -94,25 +100,27 @@ const plugins = [
   buildCSS(),
   buildHTML(),
   replace({
-    '__ENV__': JSON.stringify(process.env.NODE_ENV),
+    __ENV__: JSON.stringify(process.env.NODE_ENV),
   }),
 ];
-if (process.env.NODE_ENV === 'production') {
-  plugins.push(terser({
-    mangle: {module: true},
-    format: {
-      comments: false,
-    },
-  }));
+if (process.env.NODE_ENV === "production") {
+  plugins.push(
+    terser({
+      mangle: { module: true },
+      format: {
+        comments: false,
+      },
+    })
+  );
 }
 
 export default {
-  input: 'src/main.js',
+  input: "src/main.js",
   plugins,
   output: {
-    file: 'public/main.js',
+    file: "public/main.js",
     sourcemap: true,
-    format: 'es',
+    format: "es",
   },
   watch: {
     clearScreen: false,

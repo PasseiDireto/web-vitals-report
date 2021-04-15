@@ -1,4 +1,12 @@
-function drawTable(id, dimensionName, dimensionData, e, p75, score, withCount = true) {
+function drawTable({
+  tableId,
+  dimensionName,
+  dimensionData,
+  e,
+  p75,
+  score,
+  withCount = true,
+}) {
   const metricNames = Object.keys(dimensionData[0][1]);
   const segmentNames = Object.keys(dimensionData[0][1][metricNames[0]]);
 
@@ -9,7 +17,7 @@ function drawTable(id, dimensionName, dimensionData, e, p75, score, withCount = 
     }, 0);
   };
 
-  document.getElementById(id).innerHTML = `
+  document.getElementById(tableId).innerHTML = `
       <thead>
         <tr>
           <th class="Table-dimension">${e(dimensionName)}</th>
@@ -19,7 +27,7 @@ function drawTable(id, dimensionName, dimensionData, e, p75, score, withCount = 
               return `<th class="Table-metric">${e(metric)}</th>`;
             })
             .join("")}
-          ${withCount && `<th class="Table-count">Count</th>`}
+          ${withCount && "<th class=\"Table-count\">Count</th>"}
         </tr>
       </thead>
       <tbody>

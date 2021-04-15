@@ -23,6 +23,11 @@
     "require-atomic-updates": 0,
     "require-jsdoc": 0,
     "valid-jsdoc": 0,
-    "linebreak-style": "off"
+    "linebreak-style": "off",
+    "quotes": ["error", "double"],
+    "comma-dangle": ["error", "only-multiline"],
+    "object-curly-spacing": ["error", "always", { "objectsInObjects": true }],
+    "curly": "off",
+    "spaced-comment": "off"
   }
 }

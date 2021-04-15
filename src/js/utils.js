@@ -26,7 +26,7 @@ function toDateString(date) {
 }
 
 export function toISODate(d) {
-  return [d.slice(0, 4), d.slice(4, 6), d.slice(6)].join('-');
+  return [d.slice(0, 4), d.slice(4, 6), d.slice(6)].join("-");
 }
 
 /**
@@ -37,12 +37,8 @@ export function toISODate(d) {
  */
 export function dateOffset(offset) {
   const date = new Date();
-  const today = Date.UTC(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-  return toDateString(new Date(today + (offset * DAY)));
+  const today = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return toDateString(new Date(today + offset * DAY));
 }
 
 export function getDatesInRange(startDate, endDate) {
@@ -62,11 +58,11 @@ export function getDatesInRange(startDate, endDate) {
  */
 export function e(unsafe) {
   return unsafe
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export function mergeSortedArrays(r1, r2, getValue) {
@@ -75,8 +71,10 @@ export function mergeSortedArrays(r1, r2, getValue) {
   let i2 = 0;
 
   while (merged.length < r1.length + r2.length) {
-    if (i1 < r1.length &&
-       (i2 >= r2.length || getValue(r1[i1]) < getValue(r2[i2]))) {
+    if (
+      i1 < r1.length &&
+      (i2 >= r2.length || getValue(r1[i1]) < getValue(r2[i2]))
+    ) {
       merged.push(r1[i1++]);
     } else {
       merged.push(r2[i2++]);
@@ -95,8 +93,9 @@ export class Deferred {
 }
 
 export function nextFrame() {
-  return new Promise(
-      (r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  return new Promise((r) =>
+    requestAnimationFrame(() => requestAnimationFrame(r))
+  );
 }
 
 export function timeout(ms) {
@@ -106,7 +105,7 @@ export function timeout(ms) {
 export async function hashObj(obj) {
   const text = JSON.stringify(obj);
   const msgUint8 = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-1', msgUint8);
+  const hashBuffer = await crypto.subtle.digest("SHA-1", msgUint8);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -20,14 +20,14 @@ const listenerMap = new Map();
 export function initState(initializer) {
   let storedState = {};
   try {
-    storedState = JSON.parse(localStorage.getItem('state'));
+    storedState = JSON.parse(localStorage.getItem("state"));
   } catch (error) {
     // Do nothing.
   }
   Object.assign(state, initializer(storedState));
 
-  document.addEventListener('visibilitychange', () => {
-    localStorage.setItem('state', JSON.stringify(state));
+  document.addEventListener("visibilitychange", () => {
+    localStorage.setItem("state", JSON.stringify(state));
   });
 
   return state;
@@ -63,7 +63,7 @@ export function setState(updates) {
     }
   }
   if (stateDidChange) {
-    runChangeListeners('*');
+    runChangeListeners("*");
   }
 }
 

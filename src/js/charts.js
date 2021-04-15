@@ -145,7 +145,7 @@ function drawTimeline(name, dateValues) {
 
 function drawSummary(metric, segments) {
   const $el = document.getElementById(`summary-${metric}`);
-  let html = ``;
+  let html = "";
 
   for (const [name, values] of Object.entries(segments)) {
     const result = p75(values);
@@ -253,8 +253,15 @@ export function renderCharts(data) {
     drawTimeline(name, metric.dates);
   }
 
-  tables.map(table => {
-    table.fns.drawTable(`${table.name}` , `${table.title}`, [...Object.entries(data[`${table.name}`])], e, p75, score);
+  tables.map((table) => {
+    table.fns.drawTable({
+      tableId: `${table.name}`,
+      dimensionName: `${table.title}`,
+      dimensionData: [...Object.entries(data[`${table.name}`])],
+      e,
+      p75,
+      score,
+    });
   });
 
   document.getElementById("report").hidden = false;
